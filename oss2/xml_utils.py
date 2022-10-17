@@ -68,7 +68,8 @@ from .models import (SimplifiedObjectInfo,
                      AggregationsInfo,
                      OSSTaggingInfo,
                      OSSUserMetaInfo,
-                     AggregationGroupInfo)
+                     AggregationGroupInfo,
+                     ClientError)
 
 from .select_params import (SelectJsonTypes, SelectParameters)
 
@@ -1036,6 +1037,19 @@ def to_select_object(sql, select_params):
         return to_select_json_object(sql, select_params)
     else:
         return to_select_csv_object(sql, select_params)
+
+def to_get_objects(objects_desc):
+    root = ElementTree.Element('GetObjectsRequest')
+    for desc in objects_desc:
+        if 'object_name' in desc.keys() and 'ref_id' in desc.keys():
+            obj_node = _add_node_child(root, 'Object')
+            _add_text_child(obj_node, 'ObjectName', desc['object_name'])
+            _add_text_child(obj_node, 'RefId', desc['ref_id'])
+            if 'range' in  desc.keys():
+                _add_text_child(obj_node, 'Range', desc['range'])
+        else:
+            raise ClientError("the Batch Get request format is incorrect {0}".format(desc))
+    return _node_to_string(root)
 
 def to_select_csv_object(sql, select_params):
     root = ElementTree.Element('SelectRequest')

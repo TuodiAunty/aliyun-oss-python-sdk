@@ -17,7 +17,8 @@ import logging
 import copy
 import struct
 from requests.structures import CaseInsensitiveDict
-
+from .batch_get_response import BatchGetResponseAdapter
+from .batch_get_response import ObjectFrame
 logger = logging.getLogger(__name__)
 
 
@@ -348,6 +349,29 @@ class SelectObjectResult(HeadObjectResult):
     
     def __next__(self):
         return self.select_resp.next()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+class BatchGetObjectResult(RequestResult):
+    def __init__(self, resp, progress_callback=None, crc_enabled=False):
+        super(BatchGetObjectResult, self).__init__(resp)
+        self.batch_get_resp = BatchGetResponseAdapter(resp, progress_callback)
+
+    def read(self):
+        return self.batch_get_resp.read()
+
+    def close(self):
+        self.resp.response.close()
+        
+    def __iter__(self):
+        return iter(self.batch_get_resp)
+    
+    def __next__(self):
+        return self.batch_get_resp.next()
 
     def __enter__(self):
         return self

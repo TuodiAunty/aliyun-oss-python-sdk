@@ -32,6 +32,7 @@ setup(
                       'pycryptodome>=3.4.7',
                       'aliyun-python-sdk-kms>=2.4.1',
                       'aliyun-python-sdk-core>=2.13.12',
+                      'httplib',
                       'six'],
     include_package_data=True,
     url='http://oss.aliyun.com',

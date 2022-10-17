@@ -180,6 +180,7 @@ datetime.date之间相互转换。如 ::
     - OverwriteIfExists: true|false. true表示重新获得csv meta，并覆盖原有的meta。一般情况下不需要使用
 
 """
+from email import header
 import logging
 
 from . import xml_utils
@@ -189,6 +190,7 @@ from . import exceptions
 from . import defaults
 from . import models
 from . import select_params
+from urllib import unquote
 
 from .models import *
 from .compat import urlquote, urlparse, to_unicode, to_string
@@ -810,7 +812,7 @@ class Bucket(_Base):
             if str(select_params[SelectParameters.EnablePayloadCrc]).lower() == "true":
                 crc_enabled = True
         return SelectObjectResult(resp, progress_callback, crc_enabled)
-
+    
     def get_object_to_file(self, key, filename,
                            byte_range=None,
                            headers=None,
@@ -1230,6 +1232,40 @@ class Bucket(_Base):
         resp = self.__do_object('GET', key, params=params, headers=headers)
         logger.debug("Get object acl done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
         return self._parse_result(resp, xml_utils.parse_get_object_acl, GetObjectAclResult)
+
+    def ConvertHeaderStringToMap(self, headerstr):
+        headers = {}
+
+        headerline = headerstr.splitlines()
+
+        for iter in headerline:
+            if iter.strip() == "":
+                continue
+            tmp = iter.split(":")
+            headers[tmp[0].strip()] = unquote(tmp[1].strip())
+        return headers
+
+    def get_objects(self, objects_desc, headers=None, progress_callback=None, params=None):
+        logger.debug("Start to get objects , bucket: {0}, keys: {1}".format(
+            self.bucket_name, to_string(objects_desc)))
+        body = xml_utils.to_get_objects(objects_desc) 
+        params = {'x-oss-batchGet': '23123'}
+
+        self.timeout = 3600
+        resp = BatchGetObjectResult(self.__do_bucket('POST', headers=headers, params=params, data=body))
+        
+        batchGetResponse = {}
+        objectFrame = ObjectFrame()
+        for frame in resp:
+            if frame.type == BatchGetResponseAdapter._META_FRAME_TYPE:
+                objectFrame.header = self.ConvertHeaderStringToMap(frame.data)
+                objectFrame.data = ""
+                batchGetResponse[frame.ref_id] = copy.deepcopy(objectFrame)
+            elif frame.type == BatchGetResponseAdapter._DATA_FRAME_TYPE:
+                batchGetResponse[frame.ref_id].data += frame.data[:]
+            else:
+                self.assertEqual(frame.type, BatchGetResponseAdapter._END_FRAME_TYPE)
+        return batchGetResponse
 
     def batch_delete_objects(self, key_list, headers=None):
         """批量删除文件。待删除文件列表不能为空。

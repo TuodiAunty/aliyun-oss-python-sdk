@@ -263,6 +263,10 @@ class InvalidEncryptionAlgorithmError(ServerError):
     status = 400
     code = 'InvalidEncryptionAlgorithmError' 
 
+class BatchGetFormatIncorrect(OssError):
+    status = 400
+    code = 'BatchGetFormatIncorrect'
+
 class SelectOperationFailed(ServerError):
     code = 'SelectOperationFailed'
     def __init__(self, status, code, message):

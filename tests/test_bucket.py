@@ -558,6 +558,29 @@ class TestBucket(OssTestCase):
         wait_meta_sync()
         self.assertRaises(oss2.exceptions.NoSuchCors, self.bucket.get_bucket_cors)
 
+    def test_batch_get(self):
+        print "yes~!!"
+        auth = oss2.Auth(OSS_ID, OSS_SECRET)
+        bucket_name = self.OSS_BUCKET
+        print bucket_name
+        print "=======\n"
+        bucket = oss2.Bucket(auth, OSS_ENDPOINT, bucket_name)
+        #bucket.create_bucket(oss2.BUCKET_ACL_PRIVATE)
+        print "yes~!!"
+        content_list = []
+        obj_descs = []
+        for i in range(1, 100):
+            key = self.random_key()
+            content = random_bytes(10)
+            content_list.append(content)
+            self.bucket.put_object(key, content)
+            obj_descs.append({"ref_id": str(i), "object_name": key})
+        
+        result = bucket.get_objects(obj_descs)
+        for ref_id in result.keys():
+            print result[ref_id].header
+            self.assertEqual(result[ref_id].data, content_list[ref_id-1])
+
     def test_bucket_stat(self):
         auth = oss2.Auth(OSS_ID, OSS_SECRET)
         bucket_name = self.OSS_BUCKET + "-test-stat"
